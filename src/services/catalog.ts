@@ -68,7 +68,7 @@ export async function getCatalogPageData(
       }),
       prisma.wishlistEntry.findMany({
         where: { userId },
-        select: { gameEditionId: true },
+        select: { id: true, gameEditionId: true, priority: true },
       }),
       prisma.platform.findMany({
         select: { slug: true, name: true },
@@ -95,15 +95,18 @@ export async function getCatalogPageData(
     }
   }
 
-  const wishlistIds = new Set(
-    wishlistEntries.map((entry) => entry.gameEditionId),
+  const wishlistByEdition = new Map(
+    wishlistEntries.map((entry) => [entry.gameEditionId, entry]),
   );
 
   const items: CatalogEditionItem[] = editions.map((edition) => {
+    const wishlistEntry = wishlistByEdition.get(edition.id);
+    const isOwned = ownedIds.has(edition.id);
+    const isWishlisted = Boolean(wishlistEntry);
     let status: CollectionStatus = "pending";
-    if (ownedIds.has(edition.id)) {
+    if (isOwned) {
       status = "owned";
-    } else if (wishlistIds.has(edition.id)) {
+    } else if (isWishlisted) {
       status = "wishlist";
     }
 
@@ -128,6 +131,10 @@ export async function getCatalogPageData(
       currency: edition.currency,
       isIndicativePricing: edition.isIndicativePricing,
       status,
+      isOwned,
+      isWishlisted,
+      wishlistEntryId: wishlistEntry?.id ?? null,
+      wishlistPriority: wishlistEntry?.priority ?? null,
       completenessPercent: completenessByEdition.get(edition.id) ?? null,
     };
   });
@@ -167,6 +174,10 @@ export type EditionDetailData = {
   platformName: string;
   regionName: string;
   status: CollectionStatus;
+  isOwned: boolean;
+  isWishlisted: boolean;
+  wishlistEntryId: string | null;
+  wishlistPriority: import("@prisma/client").WishlistPriority | null;
   completenessPercent: number | null;
   components: Array<{
     id: string;
@@ -233,6 +244,7 @@ export async function getEditionDetail(
       },
       wishlistEntries: {
         where: { userId },
+        select: { id: true, priority: true },
         take: 1,
       },
     },
@@ -252,6 +264,7 @@ export async function getEditionDetail(
   } else if (edition.wishlistEntries.length > 0) {
     status = "wishlist";
   }
+  const wishlistEntry = edition.wishlistEntries[0] ?? null;
 
   return {
     id: edition.id,
@@ -273,6 +286,10 @@ export async function getEditionDetail(
     platformName: edition.platform.name,
     regionName: edition.region.name,
     status,
+    isOwned: edition.ownedCopies.length > 0,
+    isWishlisted: Boolean(wishlistEntry),
+    wishlistEntryId: wishlistEntry?.id ?? null,
+    wishlistPriority: wishlistEntry?.priority ?? null,
     completenessPercent: primaryCopy?.completenessPercent ?? null,
     components: edition.editionComponents.map((component) => ({
       id: component.id,

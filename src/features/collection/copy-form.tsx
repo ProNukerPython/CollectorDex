@@ -68,12 +68,14 @@ export function CopyForm({
   editions,
   initial,
   checklistByEdition,
+  wishlistEntryId,
 }: {
   mode: "create" | "edit";
   copyId?: string;
   editions: CopyFormEditionOption[];
   initial: CopyFormInitial;
   checklistByEdition: Record<string, CopyFormChecklistItem[]>;
+  wishlistEntryId?: string;
 }) {
   const action =
     mode === "create"
@@ -91,6 +93,9 @@ export function CopyForm({
 
   return (
     <form action={formAction} className="space-y-6">
+      {wishlistEntryId ? (
+        <input type="hidden" name="wishlistEntryId" value={wishlistEntryId} />
+      ) : null}
       <section className="space-y-3 rounded-xl border border-border/80 bg-card/40 p-4">
         <h2 className="font-[family-name:var(--font-display)] text-lg font-semibold">
           Edición y estado
@@ -278,6 +283,20 @@ export function CopyForm({
               Marcar como copia principal
             </label>
           </div>
+          {wishlistEntryId && mode === "create" ? (
+            <div className="flex items-end gap-2 pb-1 sm:col-span-2">
+              <label className="inline-flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  name="deleteWishlistAfterCreate"
+                  value="true"
+                  defaultChecked
+                  className="size-4 rounded border-input"
+                />
+                Eliminar de la wishlist después de crear la copia
+              </label>
+            </div>
+          ) : null}
           <div className="space-y-1.5 sm:col-span-2">
             <Label htmlFor="notes">Notas</Label>
             <Textarea

@@ -43,5 +43,9 @@ export type CatalogEditionItem = {
   currency: string;
   isIndicativePricing: boolean;
   status: CollectionStatus;
+  isOwned: boolean;
+  isWishlisted: boolean;
+  wishlistEntryId: string | null;
+  wishlistPriority: import("@prisma/client").WishlistPriority | null;
   completenessPercent: number | null;
 };

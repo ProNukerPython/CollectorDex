@@ -16,6 +16,15 @@ export function centsToEuros(cents: number): number {
   return cents / 100;
 }
 
+export function parseEurosToCents(value: string): number {
+  const normalized = value.trim().replace(",", ".");
+  if (!/^\d+(?:\.\d{1,2})?$/.test(normalized)) {
+    throw new Error("invalid euro amount");
+  }
+  const [euros, cents = ""] = normalized.split(".");
+  return Number(euros) * 100 + Number(cents.padEnd(2, "0"));
+}
+
 export function savingsOrOverpayCents(
   estimatedValueCents: number | null | undefined,
   pricePaidCents: number | null | undefined,

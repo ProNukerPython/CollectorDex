@@ -24,6 +24,10 @@ function item(
     currency: "EUR",
     isIndicativePricing: true,
     status: "pending",
+    isOwned: false,
+    isWishlisted: false,
+    wishlistEntryId: null,
+    wishlistPriority: null,
     completenessPercent: null,
     ...overrides,
   };

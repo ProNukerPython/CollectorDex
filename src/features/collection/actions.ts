@@ -9,6 +9,7 @@ import {
   setOwnedCopyPrimary,
   updateOwnedCopy,
 } from "@/services/collection";
+import { deleteWishlistEntry, WishlistServiceError } from "@/services/wishlist";
 import { ownedCopyFormSchema } from "@/schemas/owned-copy";
 import { requireUser } from "@/server/session";
 import type { ComponentPresence, CopyCondition } from "@prisma/client";
@@ -63,6 +64,7 @@ function formDataToObject(formData: FormData) {
 
 function revalidateCollectionPaths(editionSlug?: string) {
   revalidatePath("/collection");
+  revalidatePath("/wishlist");
   revalidatePath("/dashboard");
   revalidatePath("/catalog");
   revalidatePath("/stats");
@@ -86,10 +88,18 @@ export async function createOwnedCopyAction(
 
   try {
     const created = await createOwnedCopy(user.id, parsed.data);
+    const wishlistEntryId = formData.get("wishlistEntryId");
+    const deleteAfterCreate = formData.get("deleteWishlistAfterCreate");
+    if (wishlistEntryId && deleteAfterCreate === "true") {
+      await deleteWishlistEntry(user.id, String(wishlistEntryId));
+    }
     revalidateCollectionPaths();
     redirect(`/collection/${created.id}`);
   } catch (error) {
-    if (error instanceof CollectionServiceError) {
+    if (
+      error instanceof CollectionServiceError ||
+      error instanceof WishlistServiceError
+    ) {
       return { error: error.message };
     }
     throw error;

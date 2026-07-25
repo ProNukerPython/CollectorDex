@@ -17,6 +17,9 @@ export default async function NewCopyPage({ searchParams }: Props) {
   const editionIdParam = Array.isArray(params.editionId)
     ? params.editionId[0]
     : params.editionId;
+  const wishlistEntryId = Array.isArray(params.wishlistEntryId)
+    ? params.wishlistEntryId[0]
+    : params.wishlistEntryId;
 
   const editions = await listEditionsForSelect();
   const selectedId = editionIdParam && editions.some((e) => e.id === editionIdParam)
@@ -89,6 +92,7 @@ export default async function NewCopyPage({ searchParams }: Props) {
       ) : (
         <CopyForm
           mode="create"
+          wishlistEntryId={wishlistEntryId}
           editions={editions.map((edition) => ({
             id: edition.id,
             label: `${edition.game.name} · ${edition.platform.name} · ${edition.region.name}`,

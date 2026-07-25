@@ -82,9 +82,9 @@ export function DashboardView({ data }: { data: DashboardData }) {
           }
         />
         <StatCard
-          label="Pendientes"
-          value={String(data.pendingCount)}
-          hint="Aún por conseguir"
+          label="Wishlist"
+          value={String(data.wishlistTotalCount)}
+          hint={`${data.wishlistHighPriorityCount} alta prioridad`}
           icon={<Package className="size-4" />}
         />
       </div>
@@ -127,31 +127,52 @@ export function DashboardView({ data }: { data: DashboardData }) {
 
         <Card className="border-border/80 shadow-[var(--shadow-sm)]">
           <CardHeader className="pb-2">
-            <CardTitle className="text-base">Wishlist prioritaria</CardTitle>
-            <CardDescription>Lo que más te interesa ahora</CardDescription>
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <CardTitle className="text-base">Próximos objetivos</CardTitle>
+                <CardDescription>Precios personalizados de wishlist</CardDescription>
+              </div>
+              <Link href="/wishlist" className="text-xs text-primary hover:underline">
+                Ver todo
+              </Link>
+            </div>
           </CardHeader>
           <CardContent className="space-y-3">
             {data.priorityWishlist.length === 0 ? (
               <EmptyBlock message="Tu wishlist está vacía." />
             ) : (
               data.priorityWishlist.map((entry) => (
-                <Link
+                <div
                   key={entry.id}
-                  href={`/catalog/${entry.editionSlug}`}
-                  className="flex items-center justify-between gap-3 rounded-md text-sm transition-colors hover:bg-muted/50 -mx-1 px-1 py-1"
+                  className="-mx-1 flex items-center justify-between gap-3 rounded-md px-1 py-1 text-sm transition-colors hover:bg-muted/50"
                 >
                   <div className="min-w-0">
-                    <p className="truncate font-medium">{entry.gameName}</p>
-                    {entry.targetPriceCents !== null ? (
+                    <Link
+                      href={`/catalog/${entry.editionSlug}`}
+                      className="truncate font-medium hover:text-primary"
+                    >
+                      {entry.gameName}
+                    </Link>
+                    {entry.targetPriceCents !== null || entry.maxPriceCents !== null ? (
                       <p className="text-xs text-muted-foreground">
-                        Objetivo {formatCentsEs(entry.targetPriceCents)}
+                        {entry.targetPriceCents !== null
+                          ? `Objetivo ${formatCentsEs(entry.targetPriceCents)}`
+                          : `Máximo ${formatCentsEs(entry.maxPriceCents!)}`}
                       </p>
                     ) : null}
                   </div>
-                  <Badge variant="secondary" className="shrink-0">
-                    {WISHLIST_PRIORITY_LABELS[entry.priority]}
-                  </Badge>
-                </Link>
+                  <div className="flex shrink-0 items-center gap-2">
+                    <Badge variant="secondary">
+                      {WISHLIST_PRIORITY_LABELS[entry.priority]}
+                    </Badge>
+                    <Link
+                      href={`/wishlist/${entry.id}/edit`}
+                      className="text-xs text-primary hover:underline"
+                    >
+                      Editar
+                    </Link>
+                  </div>
+                </div>
               ))
             )}
           </CardContent>

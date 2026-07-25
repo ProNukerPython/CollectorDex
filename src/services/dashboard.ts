@@ -18,6 +18,7 @@ export type DashboardWishlistItem = {
   id: string;
   priority: WishlistPriority;
   targetPriceCents: number | null;
+  maxPriceCents: number | null;
   gameName: string;
   editionSlug: string;
 };
@@ -25,6 +26,8 @@ export type DashboardWishlistItem = {
 export type DashboardData = ReturnType<typeof buildDashboardProgress> & {
   recentPurchases: DashboardRecentPurchase[];
   priorityWishlist: DashboardWishlistItem[];
+  wishlistTotalCount: number;
+  wishlistHighPriorityCount: number;
 };
 
 export async function getDashboardData(userId: string): Promise<DashboardData> {
@@ -76,6 +79,7 @@ export async function getDashboardData(userId: string): Promise<DashboardData> {
           id: true,
           priority: true,
           targetPriceCents: true,
+          maxPriceCents: true,
           gameEdition: {
             select: {
               slug: true,
@@ -124,6 +128,7 @@ export async function getDashboardData(userId: string): Promise<DashboardData> {
       id: entry.id,
       priority: entry.priority,
       targetPriceCents: entry.targetPriceCents,
+      maxPriceCents: entry.maxPriceCents,
       gameName: entry.gameEdition.game.name,
       editionSlug: entry.gameEdition.slug,
     }));
@@ -139,5 +144,9 @@ export async function getDashboardData(userId: string): Promise<DashboardData> {
       editionSlug: purchase.gameEdition.slug,
     })),
     priorityWishlist,
+    wishlistTotalCount: wishlistEntries.length,
+    wishlistHighPriorityCount: wishlistEntries.filter(
+      (entry) => entry.priority === "HIGH" || entry.priority === "IMMEDIATE",
+    ).length,
   };
 }

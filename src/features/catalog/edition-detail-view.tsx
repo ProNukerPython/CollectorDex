@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Heart, Pencil } from "lucide-react";
 import type { EditionDetailData } from "@/services/catalog";
 import { StatusBadge } from "@/features/catalog/status-badge";
 import { Badge } from "@/components/ui/badge";
@@ -83,6 +83,28 @@ export function EditionDetailView({ data }: { data: EditionDetailData }) {
             >
               Añadir copia
             </Link>
+            {data.isWishlisted && data.wishlistEntryId ? (
+              <Link
+                href={`/wishlist/${data.wishlistEntryId}/edit`}
+                className="ml-2 inline-flex h-8 items-center gap-1.5 rounded-lg border border-border px-2.5 text-sm hover:bg-muted"
+              >
+                <Pencil className="size-3.5" />
+                Editar wishlist
+              </Link>
+            ) : (
+              <Link
+                href={`/wishlist/new?editionId=${data.id}`}
+                className="ml-2 inline-flex h-8 items-center gap-1.5 rounded-lg border border-border px-2.5 text-sm hover:bg-muted"
+              >
+                <Heart className="size-3.5" />
+                Añadir a wishlist
+              </Link>
+            )}
+            {data.isOwned ? (
+              <p className="mt-2 text-xs text-muted-foreground">
+                Esta edición ya pertenece a tu colección.
+              </p>
+            ) : null}
           </div>
         </div>
       </div>
