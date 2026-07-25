@@ -1,0 +1,585 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Auth.js models ───────────────────────────────────────────────────────────
+
+model User {
+  id            String    @id @default(uuid()) @db.Uuid
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  image         String?
+  passwordHash  String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  accounts           Account[]
+  sessions           Session[]
+  collections        Collection[]
+  ownedCopies        OwnedCopy[]
+  wishlistEntries    WishlistEntry[]
+  listings           Listing[]
+  purchases          Purchase[]
+  priceObservations  PriceObservation[]
+  negotiations       Negotiation[]
+  sellers            Seller[]
+
+  @@map("users")
+}
+
+model Account {
+  id                String  @id @default(uuid()) @db.Uuid
+  userId            String  @db.Uuid
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(uuid()) @db.Uuid
+  sessionToken String   @unique
+  userId       String   @db.Uuid
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("sessions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verification_tokens")
+}
+
+// ─── Enums ───────────────────────────────────────────────────────────────────
+
+enum Currency {
+  EUR
+  USD
+  GBP
+}
+
+enum CopyCondition {
+  SEALED
+  LIKE_NEW
+  VERY_GOOD
+  GOOD
+  ACCEPTABLE
+  DAMAGED
+}
+
+enum Authenticity {
+  UNCHECKED
+  PROBABLY_AUTHENTIC
+  VERIFIED_AUTHENTIC
+  DOUBTFUL
+  REPRODUCTION
+}
+
+enum ComponentPresence {
+  PRESENT
+  ABSENT
+  UNKNOWN
+  REPLACEMENT
+}
+
+enum CompletenessDescriptor {
+  COMPLETE
+  ALMOST_COMPLETE
+  PARTIAL
+  GAME_ONLY
+  NO_CHECKLIST
+}
+
+enum WishlistPriority {
+  LOW
+  MEDIUM
+  HIGH
+  IMMEDIATE
+}
+
+enum ListingStatus {
+  ACTIVE
+  NEGOTIATING
+  PURCHASED
+  DISCARDED
+  SOLD
+  EXPIRED
+}
+
+enum MarketplacePlatform {
+  WALLAPOP
+  VINTED
+  EBAY
+  STORE
+  PRIVATE
+  OTHER
+}
+
+enum CompletenessSegment {
+  LOOSE
+  CIB_PARTIAL
+  CIB_COMPLETE
+  SEALED
+}
+
+enum NegotiationTone {
+  FRIENDLY
+  DIRECT
+  INFORMED_COLLECTOR
+  BRIEF
+}
+
+enum ComponentImportance {
+  CRITICAL
+  HIGH
+  MEDIUM
+  LOW
+  OPTIONAL
+}
+
+// ─── Catalog (shared / seed) ──────────────────────────────────────────────────
+
+model Platform {
+  id        String   @id @default(uuid()) @db.Uuid
+  slug      String   @unique
+  name      String
+  shortName String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  editions GameEdition[]
+
+  @@map("platforms")
+}
+
+model Region {
+  id        String   @id @default(uuid()) @db.Uuid
+  slug      String   @unique
+  name      String
+  code      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  editions GameEdition[]
+
+  @@map("regions")
+}
+
+model Game {
+  id          String   @id @default(uuid()) @db.Uuid
+  slug        String   @unique
+  name        String
+  generation  Int
+  releaseYear Int?
+  description String?  @db.Text
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  editions GameEdition[]
+
+  @@index([generation])
+  @@index([name])
+  @@map("games")
+}
+
+model GameEdition {
+  id                   String   @id @default(uuid()) @db.Uuid
+  gameId               String   @db.Uuid
+  platformId           String   @db.Uuid
+  regionId             String   @db.Uuid
+  slug                 String   @unique
+  name                 String
+  versionLabel         String?
+  language             String   @default("es")
+  productCode          String?
+  editionLabel         String   @default("Estándar")
+  imageUrl             String?
+  description          String?  @db.Text
+  /// Indicative reference price in cents (not live market data)
+  referencePriceCents  Int?
+  targetPriceCents     Int?
+  maxPriceCents        Int?
+  currency             Currency @default(EUR)
+  isIndicativePricing  Boolean  @default(true)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  game              Game               @relation(fields: [gameId], references: [id], onDelete: Restrict)
+  platform          Platform           @relation(fields: [platformId], references: [id], onDelete: Restrict)
+  region            Region             @relation(fields: [regionId], references: [id], onDelete: Restrict)
+  editionComponents EditionComponent[]
+  collectionEntries CollectionEntry[]
+  ownedCopies       OwnedCopy[]
+  wishlistEntries   WishlistEntry[]
+  listings          Listing[]
+  purchases         Purchase[]
+  priceObservations PriceObservation[]
+  tags              GameEditionTag[]
+
+  @@index([gameId])
+  @@index([platformId])
+  @@index([regionId])
+  @@index([language])
+  @@map("game_editions")
+}
+
+model ComponentDefinition {
+  id          String              @id @default(uuid()) @db.Uuid
+  slug        String              @unique
+  name        String
+  description String?
+  importance  ComponentImportance @default(MEDIUM)
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+
+  editionComponents  EditionComponent[]
+  ownedCopyComponents OwnedCopyComponent[]
+  listingComponents  ListingComponent[]
+
+  @@map("component_definitions")
+}
+
+model EditionComponent {
+  id                    String  @id @default(uuid()) @db.Uuid
+  gameEditionId         String  @db.Uuid
+  componentDefinitionId String  @db.Uuid
+  /// Weight used for completeness scoring (higher = more important)
+  weight                Int     @default(1)
+  isRequired            Boolean @default(true)
+  sortOrder             Int     @default(0)
+  description           String?
+  notes                 String?
+
+  gameEdition         GameEdition         @relation(fields: [gameEditionId], references: [id], onDelete: Cascade)
+  componentDefinition ComponentDefinition @relation(fields: [componentDefinitionId], references: [id], onDelete: Restrict)
+
+  @@unique([gameEditionId, componentDefinitionId])
+  @@index([gameEditionId])
+  @@map("edition_components")
+}
+
+model Tag {
+  id        String   @id @default(uuid()) @db.Uuid
+  slug      String   @unique
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  editions GameEditionTag[]
+
+  @@map("tags")
+}
+
+model GameEditionTag {
+  gameEditionId String @db.Uuid
+  tagId         String @db.Uuid
+
+  gameEdition GameEdition @relation(fields: [gameEditionId], references: [id], onDelete: Cascade)
+  tag         Tag         @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([gameEditionId, tagId])
+  @@map("game_edition_tags")
+}
+
+// ─── User collection domain ───────────────────────────────────────────────────
+
+model Collection {
+  id          String   @id @default(uuid()) @db.Uuid
+  userId      String   @db.Uuid
+  slug        String
+  name        String
+  description String?  @db.Text
+  isDefault   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user    User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  entries CollectionEntry[]
+
+  @@unique([userId, slug])
+  @@index([userId])
+  @@map("collections")
+}
+
+model CollectionEntry {
+  id            String   @id @default(uuid()) @db.Uuid
+  collectionId  String   @db.Uuid
+  gameEditionId String   @db.Uuid
+  notes         String?  @db.Text
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  collection  Collection  @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+  gameEdition GameEdition @relation(fields: [gameEditionId], references: [id], onDelete: Restrict)
+
+  @@unique([collectionId, gameEditionId])
+  @@index([collectionId])
+  @@index([gameEditionId])
+  @@map("collection_entries")
+}
+
+model OwnedCopy {
+  id                    String                  @id @default(uuid()) @db.Uuid
+  userId                String                  @db.Uuid
+  gameEditionId         String                  @db.Uuid
+  condition             CopyCondition
+  regionLabel           String?
+  language              String                  @default("es")
+  pricePaidCents        Int?
+  estimatedValueCents   Int?
+  currency              Currency                @default(EUR)
+  purchasedAt           DateTime?
+  purchasePlatform      MarketplacePlatform?
+  sellerName            String?
+  listingUrl            String?
+  serialNumber          String?
+  notes                 String?                 @db.Text
+  photoUrls             String[]                @default([])
+  authenticity          Authenticity            @default(UNCHECKED)
+  /// Null when the edition has no checklist configured
+  completenessPercent   Int?
+  completenessDescriptor CompletenessDescriptor @default(NO_CHECKLIST)
+  isPrimary             Boolean                 @default(false)
+  createdAt             DateTime                @default(now())
+  updatedAt             DateTime                @updatedAt
+
+  user        User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  gameEdition GameEdition          @relation(fields: [gameEditionId], references: [id], onDelete: Restrict)
+  components  OwnedCopyComponent[]
+  purchases   Purchase[]
+
+  @@index([userId])
+  @@index([gameEditionId])
+  @@index([userId, gameEditionId])
+  @@index([userId, isPrimary])
+  @@map("owned_copies")
+}
+
+model OwnedCopyComponent {
+  id                    String            @id @default(uuid()) @db.Uuid
+  ownedCopyId           String            @db.Uuid
+  componentDefinitionId String            @db.Uuid
+  presence              ComponentPresence @default(UNKNOWN)
+  condition             CopyCondition?
+  notes                 String?
+
+  ownedCopy           OwnedCopy           @relation(fields: [ownedCopyId], references: [id], onDelete: Cascade)
+  componentDefinition ComponentDefinition @relation(fields: [componentDefinitionId], references: [id], onDelete: Restrict)
+
+  @@unique([ownedCopyId, componentDefinitionId])
+  @@index([ownedCopyId])
+  @@map("owned_copy_components")
+}
+
+model WishlistEntry {
+  id                    String           @id @default(uuid()) @db.Uuid
+  userId                String           @db.Uuid
+  gameEditionId         String           @db.Uuid
+  priority              WishlistPriority @default(MEDIUM)
+  targetPriceCents      Int?
+  maxPriceCents         Int?
+  currency              Currency         @default(EUR)
+  minCondition          CopyCondition?
+  requiredComponentIds  String[]         @default([])
+  desiredRegion         String?
+  notes                 String?          @db.Text
+  createdAt             DateTime         @default(now())
+  updatedAt             DateTime         @updatedAt
+
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  gameEdition GameEdition @relation(fields: [gameEditionId], references: [id], onDelete: Restrict)
+
+  @@unique([userId, gameEditionId])
+  @@index([userId, priority])
+  @@index([gameEditionId])
+  @@map("wishlist_entries")
+}
+
+model Seller {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @db.Uuid
+  name      String
+  platform  MarketplacePlatform?
+  profileUrl String?
+  notes     String?  @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  listings  Listing[]
+  purchases Purchase[]
+
+  @@index([userId])
+  @@map("sellers")
+}
+
+model Listing {
+  id                      String              @id @default(uuid()) @db.Uuid
+  userId                  String              @db.Uuid
+  gameEditionId           String              @db.Uuid
+  sellerId                String?             @db.Uuid
+  platform                MarketplacePlatform
+  url                     String
+  title                   String
+  priceCents              Int
+  shippingCents           Int                 @default(0)
+  feeCents                Int                 @default(0)
+  totalCents              Int
+  currency                Currency            @default(EUR)
+  sellerName              String?
+  location                String?
+  description             String?             @db.Text
+  apparentCondition       CopyCondition?
+  estimatedAuthenticity   Authenticity        @default(UNCHECKED)
+  publishedAt             DateTime?
+  savedAt                 DateTime            @default(now())
+  status                  ListingStatus       @default(ACTIVE)
+  completenessSegment     CompletenessSegment @default(CIB_PARTIAL)
+  notes                   String?             @db.Text
+  createdAt               DateTime            @default(now())
+  updatedAt               DateTime            @updatedAt
+
+  user        User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  gameEdition GameEdition        @relation(fields: [gameEditionId], references: [id], onDelete: Restrict)
+  seller      Seller?            @relation(fields: [sellerId], references: [id], onDelete: SetNull)
+  images      ListingImage[]
+  components  ListingComponent[]
+  purchases   Purchase[]
+  negotiations Negotiation[]
+
+  @@index([userId, status])
+  @@index([gameEditionId])
+  @@index([platform])
+  @@map("listings")
+}
+
+model ListingImage {
+  id        String   @id @default(uuid()) @db.Uuid
+  listingId String   @db.Uuid
+  url       String
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+
+  listing Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  @@index([listingId])
+  @@map("listing_images")
+}
+
+model ListingComponent {
+  id                    String  @id @default(uuid()) @db.Uuid
+  listingId             String  @db.Uuid
+  componentDefinitionId String  @db.Uuid
+  isVisible             Boolean @default(true)
+  notes                 String?
+
+  listing             Listing             @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  componentDefinition ComponentDefinition @relation(fields: [componentDefinitionId], references: [id], onDelete: Restrict)
+
+  @@unique([listingId, componentDefinitionId])
+  @@index([listingId])
+  @@map("listing_components")
+}
+
+model Purchase {
+  id               String               @id @default(uuid()) @db.Uuid
+  userId           String               @db.Uuid
+  gameEditionId    String               @db.Uuid
+  ownedCopyId      String?              @db.Uuid
+  listingId        String?              @db.Uuid
+  sellerId         String?              @db.Uuid
+  platform         MarketplacePlatform?
+  pricePaidCents   Int
+  shippingCents    Int                  @default(0)
+  feeCents         Int                  @default(0)
+  totalCents       Int
+  currency         Currency             @default(EUR)
+  purchasedAt      DateTime
+  notes            String?              @db.Text
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  gameEdition GameEdition  @relation(fields: [gameEditionId], references: [id], onDelete: Restrict)
+  ownedCopy   OwnedCopy?   @relation(fields: [ownedCopyId], references: [id], onDelete: SetNull)
+  listing     Listing?     @relation(fields: [listingId], references: [id], onDelete: SetNull)
+  seller      Seller?      @relation(fields: [sellerId], references: [id], onDelete: SetNull)
+
+  @@index([userId, purchasedAt])
+  @@index([gameEditionId])
+  @@map("purchases")
+}
+
+model PriceObservation {
+  id                  String              @id @default(uuid()) @db.Uuid
+  userId              String              @db.Uuid
+  gameEditionId       String              @db.Uuid
+  observedAt          DateTime
+  priceCents          Int
+  currency            Currency            @default(EUR)
+  condition           CopyCondition?
+  completenessSegment CompletenessSegment
+  platform            MarketplacePlatform?
+  url                 String?
+  notes               String?             @db.Text
+  isIndicative        Boolean             @default(true)
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  gameEdition GameEdition @relation(fields: [gameEditionId], references: [id], onDelete: Restrict)
+
+  @@index([gameEditionId, observedAt])
+  @@index([gameEditionId, completenessSegment])
+  @@index([userId])
+  @@map("price_observations")
+}
+
+model Negotiation {
+  id                 String           @id @default(uuid()) @db.Uuid
+  userId             String           @db.Uuid
+  listingId          String?          @db.Uuid
+  listedPriceCents   Int
+  initialOfferCents  Int
+  maxPriceCents      Int
+  currency           Currency         @default(EUR)
+  observedDefects    String?          @db.Text
+  buySpeed           String?
+  deliveryMode       String?
+  tone               NegotiationTone  @default(FRIENDLY)
+  generatedMessage   String           @db.Text
+  generatorKind      String           @default("template")
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  listing Listing? @relation(fields: [listingId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([listingId])
+  @@map("negotiations")
+}
